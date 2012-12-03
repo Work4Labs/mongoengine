@@ -75,7 +75,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     global _dbs
 
     if alias in _connections:
-        get_connection(alias=alias).close()
+        get_connection(alias=alias).disconnect()
         del _connections[alias]
     if alias in _dbs:
         del _dbs[alias]
