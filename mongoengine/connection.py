@@ -18,6 +18,33 @@ _connections = {}
 _dbs = {}
 
 
+class ConnectionWrapper(object):
+    '''
+    This proxy class purpose is to be sure we close the connection to Mongo, even if
+    the script crashes because of an exception or if the disconnect() method has not
+    been called.
+    It must be instanciated like this:
+        with ConnectionWrapper() as conn_wrapper:
+            conn_wrapper.set_connection(conn_object)
+    '''
+
+    def __init__(self):
+        self._conn = None;
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.get_connection().close()
+
+    def get_connection(self):
+        return self._conn
+
+    def set_connection(self, conn):
+        self._conn = conn
+
+
+
 def register_connection(alias, name, host='localhost', port=27017,
                         is_slave=False, read_preference=False, slaves=None,
                         username=None, password=None, **kwargs):
@@ -121,10 +148,12 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             connection_class = ReplicaSetConnection
 
         try:
-            _connections[alias] = connection_class(**conn_settings)
+            with ConnectionWrapper() as conn_wrapper:
+                conn_wrapper.set_connection(connection_class(**conn_settings))
+                _connections[alias] = conn_wrapper
         except Exception, e:
             raise ConnectionError("Cannot connect to database %s :\n%s" % (alias, e))
-    return _connections[alias]
+    return _connections[alias].get_connection()
 
 
 def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
