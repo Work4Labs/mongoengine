@@ -223,12 +223,12 @@ class BaseField(object):
         """
         return self.to_python(value)
 
-    def to_dict(self, value):
+    def to_dict(self, value, keep_id):
         """Same as to_python, instead, recursively calls to_dict on documents
         """
         value = self.to_python(value)
         if hasattr(value, 'to_dict'):
-            value = value.to_dict()
+            value = value.to_dict(keep_id)
 
         return value
 
@@ -1059,16 +1059,18 @@ class BaseDocument(object):
             data[name] = field.to_mongo(self._data.get(name, None))
         return data
 
-    def to_dict(self):
+    def to_dict(self, keep_id=True):
         """Returns a dict representation of the document
         """
         data = {}
         for field_name, field in self._fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
-                data[field.db_field] = field.to_dict(value)
+                data[field.db_field] = field.to_dict(value, keep_id)
 
-        data.pop('_id', None)
+        id = data.pop('_id', None)
+        if keep_id:
+            data['id'] = id
 
         if not self._dynamic:
             return data
