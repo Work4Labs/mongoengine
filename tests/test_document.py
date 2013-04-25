@@ -3350,6 +3350,54 @@ class DocumentTest(unittest.TestCase):
                                         }
                                     ) ]), "1,2")
 
+    def test_to_dict(self):
+        """
+        Test to_dict method on documents and embedded documents
+        """
+
+        class Page(EmbeddedDocument):
+            log_message = StringField()
+            parameters = DictField()
+
+        class Author(Document):
+            name = StringField()
+            age = IntField()
+
+        class Site(Document):
+            page = EmbeddedDocumentField(Page)
+            author = ReferenceField(Author)
+            nb_visits = IntField()
+
+
+        Site.drop_collection()
+        Author.drop_collection()
+
+        author = Author(name='Max', age=24)
+        author.save()
+        page = Page(log_message="Warning: Dummy message", parameters = {'level': 'WARNING'})
+        site = Site(page=page, author=author, nb_visits=1203)
+        site.save()
+
+        # simple document
+        self.assertDictEqual(author.to_dict(keep_id=False), {'name':'Max', 'age': 24})
+        # embedded document and reference
+        expected = {
+            'page': {
+                'log_message': 'Warning: Dummy message',
+                'parameters': {
+                    'level': 'WARNING',
+                },
+            },
+            'author': {
+                'name': 'Max',
+                'age': 24,
+            },
+            'nb_visits': 1203,
+        }
+        self.assertDictEqual(site.to_dict(keep_id=False), expected)
+        self.assertIn('id', site.to_dict(keep_id=True))
+        self.assertIn('id', site.to_dict(keep_id=True)['author'])
+
 
 class ValidatorErrorTest(unittest.TestCase):
 
@@ -3502,52 +3550,6 @@ class ValidatorErrorTest(unittest.TestCase):
             log.machine = "127.0.0.1"
 
         self.assertRaises(OperationError, change_shard_key)
-
-    def test_to_dict(self):
-        """
-        Test to_dict method on documents and embedded documents
-        """
-
-        class Page(EmbeddedDocument):
-            log_message = StringField()
-            parameters = DictField()
-
-        class Author(Document):
-            name = StringField()
-            age = IntField()
-
-        class Site(Document):
-            page = EmbeddedDocumentField(Page)
-            author = ReferenceField(Author)
-            nb_visits = IntField()
-
-
-        Site.drop_collection()
-        Author.drop_collection()
-
-        author = Author(name='Max', age=24)
-        author.save()
-        page = Page(log_message="Warning: Dummy message", parameters = {'level': 'WARNING'})
-        site = Site(page=page, author=author, nb_visits=1203)
-        site.save()
-
-        # simple document
-        self.assertDictEqual(author.to_dict(), {'name':'Max', 'age': 24})
-        # embedded document and reference
-        expected = {
-            'page': {
-                'log_message': 'Warning: Dummy message',
-                'parameters': {
-                    'level': 'WARNING',
-                },
-            },
-            'author': {
-                'name': 'Max',
-                'age': 24,
-            },
-            'nb_visits': 1203,
-        }
-        self.assertDictEqual(site.to_dict(), expected)
 
 
 if __name__ == '__main__':
