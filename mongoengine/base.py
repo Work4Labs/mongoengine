@@ -1076,7 +1076,7 @@ class BaseDocument(object):
             return data
 
         for name, field in self._dynamic_fields.items():
-            data[name] = field.to_dict(self._data.get(name, None))
+            data[name] = field.to_dict(self._data.get(name, None), keep_id)
         return data
 
     @classmethod
